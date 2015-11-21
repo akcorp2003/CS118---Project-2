@@ -15,20 +15,25 @@ void error(char *msg)
 int main(int argc, char *argv[])
 {
     struct hostent* server;
+    struct sockaddr_in serv_addr;
+    double prob_loss = 0.0;
+    double prob_corrupt = 0.0;
     char* filename;
 
     //check for incorrect input
-    if(argc != 4)
+    if(argc != 6)
     {
-        fprintf(stderr, "usage: %s <hostname> <server port> <filename> \n", argv[0]);
+        fprintf(stderr, "usage: %s <hostname> <server port> <filename> <probability loss> <probability corrupt>\n", argv[0]);
         exit(0);
     }
-    
+
     portno = atoi(argv[2]);
     filename = argv[3];
+    prob_loss = atof(argv[4]) * 100.0;
+    prob_corrupt = atof(argv[5]) * 100.0;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0); //create a new socket
-    if (sockfd < 0) 
+    if (sockfd < 0)
         error("ERROR opening socket");
 
     //set up the socket
@@ -45,28 +50,46 @@ int main(int argc, char *argv[])
     bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
     serv_addr.sin_port = htons(portno);
 
-}
+    if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0) //establish a connection to the server
+        error("ERROR connecting");
+
+    int n;
+    //send the request over to the server
+    n = write(sockfd,,strlen());
+    if (n < 0)
+        error("ERROR writing to socket");
+
+    printf("Requested the file: %s\n", filename);
+
+    char* buffer_from_server;
+    while(1)
+    {
+        //run until we receive the FIN packet
+        if(read(sockfd,,strlen() < 0)
+            error("ERROR reading from socket.");
+
+        //packet loss
+        if(rand() % 100 < prob_loss)
+        {
+            printf("A data packet was lost!! The sequence number was: ");
+        }
+
+        //packet corrpution
+        else if(rand() % 100 < prob_corrupt)
+        {
+            printf("A data packet is corrupted!! The sequence number was: ");
+            //send out an ACK that we expected
+        }
+
+        //nothing bad happened
+        else
+        {
+
+        }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    }//end while
 
 
 
