@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     prob_loss = atof(argv[4]) * 100.0;
     prob_corrupt = atof(argv[5]) * 100.0;
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); //create a new socket
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
     if (sockfd < 0)
         error("ERROR opening socket");
 
