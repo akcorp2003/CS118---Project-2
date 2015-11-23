@@ -8,7 +8,19 @@
 
 static int MAX_PACKETSIZE = 1000;
 static int HEADER_LEN = 16;
+static int HEADER_FIELDS = 6;
 int timeout = 0;
+
+/*
+ * header format:
+ * src port 2 bytes
+ * dest port 2 bytes
+ * seq num 4 bytes
+ * ack num 4 bytes
+ * data len 2 bytes
+ * checksum 2 bytes
+ * 16 bytes total
+*/
 
 void error(char *msg)
 {
@@ -23,6 +35,7 @@ int main(int argc, char *argv[])
     double prob_loss = 0.0;
     double prob_corrupt = 0.0;
     char* filename;
+    int expected_packet_number = 0;
 
     //check for incorrect input
     if(argc != 6)
@@ -30,6 +43,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "usage: %s <hostname> <server port> <filename> <probability loss> <probability corrupt>\n", argv[0]);
         exit(0);
     }
+
+    char buffer[256];
+    char packetbuffer[20][MAX_PACKETSIZE];
+    char packet[HEADER_FIELDS][HEADER_LEN];
 
     portno = atoi(argv[2]);
     filename = argv[3];
@@ -75,6 +92,7 @@ int main(int argc, char *argv[])
         //packet loss
         if(rand() % 100 < prob_loss)
         {
+            //don't do anything special
             printf("A data packet was lost!! The sequence number was: ");
         }
 
@@ -83,6 +101,15 @@ int main(int argc, char *argv[])
         {
             printf("A data packet is corrupted!! The sequence number was: ");
             //send out an ACK that we expected
+            //prep up the packet
+            sprintf(packet[0], "%d", portno); //src port
+	   //dst port?
+	    sprintf(packet[2], "%d", expected_ack_number - 1); //seq field
+	    if(write(sockfd, packet, strlen(packet)< 0)
+	    {
+		error("Unable to write to sockfd");
+	    }
+
         }
 
         //nothing bad happened
