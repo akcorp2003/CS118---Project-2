@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <strings.h>
 
+static int MAX_PACKETSIZE = 1000;
+static int HEADER_LEN = 16;
+int timeout = 0;
+
 void error(char *msg)
 {
     perror(msg);
