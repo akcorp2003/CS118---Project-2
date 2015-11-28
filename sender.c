@@ -14,6 +14,7 @@ static int headerLen = 20;
 static int packetBufferSize = 20;
 int timeout = 0;
 int fileRequest = 1;
+int dur = 8;
 
 struct Header {
   short srcPort;
@@ -36,9 +37,9 @@ int isHit (int prob)
   if (prob == 0)
     return 0;
 
-  time_t t;
-  srand((unsigned) time(&t));
-  if (rand() % 100 < prob)
+  int num = rand() % 100;
+  printf("%d\n", num);
+  if (num < prob)
     return 1;
   return 0;
 }
@@ -46,6 +47,7 @@ int isHit (int prob)
 void setTimeout (int signum)
 {
   timeout = 1;
+  printf("SIGNAL RECEIVED\n");
 }
 
 int getAck(char * buffer)
@@ -53,6 +55,20 @@ int getAck(char * buffer)
   struct Header packet;
   memcpy((struct Header *) &packet, buffer, headerLen);
   return packet.ack;
+}
+
+int getDataLen(char * buffer)
+{
+  struct Header packet;
+  memcpy((struct Header *) &packet, buffer, headerLen);
+  return (int) packet.dataLen;
+}
+
+void getFileName(char * buffer, char * filename)
+{
+  struct Header packet;
+  memcpy((struct Header *) &packet, buffer, headerLen);
+  memcpy(filename, buffer + headerLen, packet.dataLen);
 }
 
 
@@ -77,6 +93,10 @@ int main(int argc, char *argv[])
   socklen_t clilen;
   struct sockaddr_in serv_addr, cli_addr;
   struct Header packetHeader;
+  struct sigaction sa;
+
+  time_t t;
+  srand((unsigned) time(&t));
 
   if (argc < 5) {
     fprintf(stderr,"ERROR, missing argument\n");
@@ -102,12 +122,11 @@ int main(int argc, char *argv[])
   int n, loss = 0, corruption = 0, base = 0, nextSeqnum = 0, seq = 0,
       ack = 0, numUnacked = 0, i, j, k, len, cumAck, sizeCliAddr;
   char buffer[1024];
-  char packetBuffer[packetBufferSize][maxPacketSize];
+  char packetBuffer[packetBufferSize][maxPacketSize + 1];
   int nxtPtr = 0, nxtFree = 0, count = 0;
   char unacked[CWnd][maxPacketSize+1];
   struct Header recvAck, data;
   char * filename;
-  char * temp;
   FILE * fp;
   char packet[maxPacketSize + 1];
   int cur;
@@ -124,7 +143,10 @@ int main(int argc, char *argv[])
     window[i][2] = 0;
   }
 
-  signal (SIGALRM, setTimeout);
+  memset((struct sigaction *) &sa, 0, sizeof(sa));
+  sa.sa_handler = setTimeout;
+  sa.sa_flags = SA_SIGINFO;
+  sigaction (SIGALRM, &sa, NULL);
   while (1)
   {
     memset(buffer, 0, 1024);
@@ -135,18 +157,18 @@ int main(int argc, char *argv[])
       sizeCliAddr = sizeof(cli_addr);
       n = recvfrom(sockfd, buffer, sizeof(buffer), 0, 
                    (struct sockaddr *) &cli_addr, &sizeCliAddr);
-   }
-    else n = EINTR;
+    }
+    else errno = EINTR;
 
-    // Timeout action
-    if (n == EINTR)
+    if (errno == EINTR)
+    {
       if (timeout == 1)
       {
         timeout = 0;
 
 	k = base + CWnd;
 	for (i = base; i < k; i++)
-          for (j = 0; i < CWnd; j++)
+          for (j = 0; j < CWnd; j++)
             if (window[j][0] == 0 && window[j][1] == i)
             {
               n = sendto(sockfd, unacked[j], sizeof(unacked[j]), 0,
@@ -154,15 +176,17 @@ int main(int argc, char *argv[])
               if (n < 0)
                 error ("ERROR reading from socket");
 
+              printf("\nPacket Sent: \n");
               printPacket (unacked[j]);
 	      break;
             }
 
-        alarm (5);
+        alarm (dur);
 	continue; 
       }
       else
         error("ERROR reading from socket");
+    }
     else if (n < 0) error("ERROR reading from socket");
    	 
     // if no loss or corruption
@@ -171,11 +195,11 @@ int main(int argc, char *argv[])
     if (loss != 1 && corruption != 1)
     {
       // if client asks for file
-      if (fileRequest == 1)
+      if (getDataLen(buffer) > 0)
       {
         filename = (char *) malloc((n+1) * sizeof(char));
         filename[n] = '\0';
-        memcpy(filename, buffer, n); 
+        getFileName(buffer, filename);
         printf("File Requested: %s\n", filename);
 
         fp = fopen(filename, "r");
@@ -220,10 +244,12 @@ int main(int argc, char *argv[])
                   if (n < 0)
                     error ("ERROR writing to socket");
 
+                  if (nextSeqnum == base)
+                    alarm(dur);
+ 
                   printf("\nPacket sent:\n");
                   printPacket(packet);
-                  temp = &unacked[i][0];
-                  temp = packet;
+                  memcpy(&unacked[i][0], &packet[0], sizeof(packet));
 
 		  seq += len;	  
                   ack += len;
@@ -271,7 +297,7 @@ int main(int argc, char *argv[])
             window[i][0] = 1;
 
 	    if (window[i][1] == base)
-              alarm(0);
+              alarm(dur);
 
 	    if (count > 0)
             {
@@ -292,21 +318,16 @@ int main(int argc, char *argv[])
           }
         }
 	base += j;
-        for (i = 0; i < CWnd; i++)
-          if (window[i][1] == base && window[i][0] == 0)
-          {
-            alarm(5);
-            break;
-          }
       }
     }
     // if loss or corruption do nothing
     else
     {
-      if (loss == 1)
-        printf("Packet Loss\n");
-      if (corruption == 1)
-        printf("Packet Corrupted\n");
+      if (loss == 1 && corruption == 0)
+        printf("Packet Lost:\n");
+      else if (corruption == 1 && loss == 0)
+        printf("Packet Corrupted:\n");
+      else printf("Packet Corrupted and Lost:\n");
 
       loss = 0;
       corruption = 0;
