@@ -7,7 +7,7 @@
 #include <strings.h>
 #include <string.h>
 
-static int MAX_PACKETSIZE = 22;
+static int MAX_PACKETSIZE = 30;
 static int HEADER_LEN = 20;
 static int HEADER_FIELDS = 7;
 int timeout = 0;
@@ -159,14 +159,12 @@ int main(int argc, char *argv[])
 	}
 
     int n;
-    /*
-    uncomment this section when the sender accepting requests is finished
     //send the file request over to the server
     header_data.srcPort = ntohs(cli_addr.sin_port);
 	header_data.destPort = ntohs(serv_addr.sin_port);
 	header_data.seq = 0;
 	header_data.ack = 0;
-	header_data.dataLen = (short)0;
+	header_data.dataLen = (short) strlen(filename);
 	bzero(packet, MAX_PACKETSIZE);
     int i;
     int j = 0;
@@ -175,15 +173,18 @@ int main(int argc, char *argv[])
         packet[i] = filename[j];
         j++; 
     }
-    packet[HEADER+LEN + strlen(filename)] = '\0';
+    packet[HEADER_LEN + strlen(filename)] = '\0';
 	memcpy(packet, (struct Header*) &header_data, HEADER_LEN);
 	if(write(sockfd, packet, sizeof(packet)) < 0)
 	{
 		error("Unable to write to sockfd");
-	}*/
+	}
+    printPacket(packet);
+    /*
     n = write(sockfd, filename,strlen(filename));
     if (n < 0)
         error("ERROR writing to socket");
+    */
 
     printf("Requested the file: %s\n", filename);
     printf("\n");
@@ -322,3 +323,4 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+
