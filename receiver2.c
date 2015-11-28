@@ -20,6 +20,7 @@ int timeout = 0;
  * ack num 4 bytes
  * data len 2 bytes
  * checksum 2 bytes
+ * flag 4 bytes
  * 16 bytes total
 */
 
