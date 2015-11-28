@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <errno.h>
 
-static int maxPacketSize = 22;
+static int maxPacketSize = 30;
 static int headerLen = 20;
 static int packetBufferSize = 20;
 int timeout = 0;
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
   int nxtPtr = 0, nxtFree = 0, count = 0;
   char unacked[CWnd][maxPacketSize+1];
   struct Header recvAck, data;
-  char * filename;
+  char filename[1024];
   FILE * fp;
   char packet[maxPacketSize + 1];
   int cur;
@@ -197,8 +197,8 @@ int main(int argc, char *argv[])
       // if client asks for file
       if (getDataLen(buffer) > 0)
       {
-        filename = (char *) malloc((n+1) * sizeof(char));
-        filename[n] = '\0';
+        printPacket(buffer);
+        memset(filename,0,1024);
         getFileName(buffer, filename);
         printf("File Requested: %s\n", filename);
 
