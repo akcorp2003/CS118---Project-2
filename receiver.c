@@ -289,6 +289,12 @@ int main(int argc, char *argv[])
             
 			else
 			{
+                
+                /*if (get_flag(buffer_from_server) == 1) //1 represents the FIN packet
+				{
+
+				     break;
+				}*/
 				printf("Received a packet that had an unexpected SEQ number...\n");
                 printf("Expecting seq no.: %d\n", expected_SEQ_number);
                 printf("Received seq no. of: %d\n", seq_no);
@@ -307,11 +313,6 @@ int main(int argc, char *argv[])
 				}
 
 				printf("Packet sent with ACK: %d\n", recent_received_SEQ_number);
-                /*
-                if (get_flag(buffer_from_server) == 1) //1 represents the FIN packet
-				{
-				     break;
-				}*/
 			}
             
 
