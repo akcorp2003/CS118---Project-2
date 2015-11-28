@@ -182,12 +182,14 @@ int main(int argc, char *argv[])
             }
 
         alarm (dur);
+        errno = 0;
 	continue; 
       }
       else
         error("ERROR reading from socket");
     }
-    else if (n < 0) error("ERROR reading from socket");
+    else if (n < 0) 
+        error("ERROR reading from socket");
    	 
     // if no loss or corruption
     loss = isHit(probLoss); 

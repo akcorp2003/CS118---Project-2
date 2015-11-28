@@ -210,14 +210,14 @@ int main(int argc, char *argv[])
         int seq_no = get_SequenceNumber(buffer_from_server);
 
         //packet loss
-        if(rand() % 100 <= prob_loss)
+        if(rand() % 100 < prob_loss)
         {
 			//do nothing special
             printf("A data packet was lost!! The sequence number was: %d\n", get_SequenceNumber(buffer_from_server));
         }
 
         //packet corruption
-        else if(rand() % 100 <= prob_corrupt)
+        else if(rand() % 100 < prob_corrupt)
         {
             printf("A data packet is corrupted!! The sequence number was: %d\n", get_SequenceNumber(buffer_from_server));
 
@@ -246,22 +246,22 @@ int main(int argc, char *argv[])
             printf("Packet Received:\n");
             printPacket(buffer_from_server);
 
-			//copy all data from the buffer
-			int i = HEADER_LEN;
-			int j = 0;
-			int datalen = get_datalen(buffer_from_server);
-            memset(buffer, 0, sizeof(buffer));
-			for (j = 0; j < datalen; j++)
-			{
-				buffer[j] = buffer_from_server[i];
-                                i++;
-			}
-            buffer[j] = '\0';
-
-			fprintf(file_to_build, "%s", buffer);
-
 			if (seq_no == expected_SEQ_number)
 			{
+                  //push all data into the file
+                  //copy all data from the buffer
+			      int i = HEADER_LEN;
+			      int j = 0;
+			      int datalen = get_datalen(buffer_from_server);
+                  memset(buffer, 0, sizeof(buffer));
+			      for (j = 0; j < datalen; j++)
+			      {
+				      buffer[j] = buffer_from_server[i];
+                      i++;
+			      }
+                  buffer[j] = '\0';
+
+			      fprintf(file_to_build, "%s", buffer);
                   recent_received_SEQ_number = seq_no;
 				  header_data.srcPort = ntohs(cli_addr.sin_port);
 			      header_data.destPort = ntohs(serv_addr.sin_port);
