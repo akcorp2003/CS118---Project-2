@@ -31,7 +31,7 @@ struct Header
 	int ack;
 	short dataLen;
 	short checkSum;
-        int flag;
+    int flag;
 };
 
 void error(char *msg)
@@ -50,7 +50,7 @@ void printPacket(char * packet)
 	printf("ack: %d\ndataLen: %d\ncheckSum: %d\n", pktHeader.ack,
 		pktHeader.dataLen, pktHeader.checkSum);
         printf("flag: %d\n", pktHeader.flag);
-	printf("%s\n", packet + HEADER_LEN);
+	printf("data: %s\n", packet + HEADER_LEN);
 }
 
 int get_SequenceNumber(char* packet)
@@ -59,6 +59,14 @@ int get_SequenceNumber(char* packet)
 	memcpy((struct Header *) &pktHeader, packet, HEADER_LEN);
 
 	return pktHeader.seq;
+}
+
+int get_ACKNumber(char* packet)
+{
+	struct Header pktHeader;
+	memcpy((struct Header*) &pktHeader, packet, HEADER_LEN);
+
+	return pktHeader.ack;
 }
 
 int get_datalen(char* packet)
@@ -87,9 +95,11 @@ int main(int argc, char *argv[])
     char* filename;
     char * filename2;
     int expected_SEQ_number = 0;
+    int recent_received_SEQ_number = 0;
     int portno;
     int sockfd;
     struct Header header_data;
+    time_t t;
 
     //check for incorrect input
     if(argc != 6)
@@ -102,14 +112,17 @@ int main(int argc, char *argv[])
     char packetbuffer[20][MAX_PACKETSIZE];
     char packet[MAX_PACKETSIZE];
 
+    //initialize random generator
+    srand((unsigned) time(&t));
+
     portno = atoi(argv[2]);
     filename = argv[3];
     prob_loss = atof(argv[4]) * 100.0;
     prob_corrupt = atof(argv[5]) * 100.0;
 
 	//for now...
-	prob_loss = 0.0;
-	prob_corrupt = 0.0;
+	//prob_loss = 0.0;
+	//prob_corrupt = 0.0;
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
     if (sockfd < 0)
@@ -134,20 +147,46 @@ int main(int argc, char *argv[])
     cli_addr.sin_addr.s_addr = INADDR_ANY;
     cli_addr.sin_port = htons(portno * 2);
 
-  if (bind(sockfd, (struct sockaddr *) &cli_addr, sizeof(cli_addr)) < 0)
-    error("ERROR on binding");
+	if (bind(sockfd, (struct sockaddr *) &cli_addr, sizeof(cli_addr)) < 0)
+	{
+		error("ERROR on binding");
+	}
+		
 
-  if (connect(sockfd, (struct sockaddr *) &serv_addr, 
-              sizeof(serv_addr)) < 0)
-    error("ERROR on connecting");
+	if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+	{
+		error("ERROR on connecting");
+	}
 
     int n;
-    //send the request over to the server
+    /*
+    uncomment this section when the sender accepting requests is finished
+    //send the file request over to the server
+    header_data.srcPort = ntohs(cli_addr.sin_port);
+	header_data.destPort = ntohs(serv_addr.sin_port);
+	header_data.seq = 0;
+	header_data.ack = 0;
+	header_data.dataLen = (short)0;
+	bzero(packet, MAX_PACKETSIZE);
+    int i;
+    int j = 0;
+    for(i = HEADER_LEN; i < HEADER_LEN + strlen(filename); i++)
+    {
+        packet[i] = filename[j];
+        j++; 
+    }
+    packet[HEADER+LEN + strlen(filename)] = '\0';
+	memcpy(packet, (struct Header*) &header_data, HEADER_LEN);
+	if(write(sockfd, packet, sizeof(packet)) < 0)
+	{
+		error("Unable to write to sockfd");
+	}*/
     n = write(sockfd, filename,strlen(filename));
     if (n < 0)
         error("ERROR writing to socket");
 
     printf("Requested the file: %s\n", filename);
+    printf("\n");
 
     filename2 = (char *) malloc((strlen(filename)+2) * sizeof(char));
     memcpy(filename2 + 1, filename, strlen(filename));
@@ -159,84 +198,125 @@ int main(int argc, char *argv[])
     char buffer_from_server[2048];
     header_data.flag = 0;
     int sizeServAddr = sizeof(serv_addr);
+
     while(1)
     {
+        printf("\n");
         //run until we receive the FIN packet
         n = read(sockfd,buffer_from_server,sizeof(buffer_from_server));
         if (n < 0) error("ERROR reading from socket");
 
-        printf("Packet Received:\n");
-        printPacket(buffer_from_server);
+        int seq_no = get_SequenceNumber(buffer_from_server);
 
         //packet loss
         if(rand() % 100 <= prob_loss)
         {
-            //don't do anything special
-            printf("A data packet was lost!! The sequence number was: ");
+			//do nothing special
+            printf("A data packet was lost!! The sequence number was: %d\n", get_SequenceNumber(buffer_from_server));
         }
 
-        //packet corrpution
+        //packet corruption
         else if(rand() % 100 <= prob_corrupt)
         {
-            printf("A data packet is corrupted!! The sequence number was: ");
+            printf("A data packet is corrupted!! The sequence number was: %d\n", get_SequenceNumber(buffer_from_server));
+
             //send out an ACK that we expected
-            //prep up the packet
-            sprintf(packet, "%d", portno); //src port
-		    //dst port?
-			sprintf(&packet[2], "%d", expected_SEQ_number - 1); //seq field
+			header_data.srcPort = ntohs(cli_addr.sin_port);
+			header_data.destPort = ntohs(serv_addr.sin_port);
+			header_data.seq = 0;
+			header_data.ack = recent_received_SEQ_number;
+			header_data.dataLen = (short)0;
+			bzero(packet, MAX_PACKETSIZE);
+			memcpy(packet, (struct Header*) &header_data, HEADER_LEN);
 			if(write(sockfd, packet, sizeof(packet)) < 0)
 			{
 				error("Unable to write to sockfd");
 			}
+
+			printf("Packet sent with ACK: %d\n", recent_received_SEQ_number);
+            printPacket(packet);
 
 	    }
 
         //nothing bad happened
         else
         {
-			int seq_no = get_SequenceNumber(buffer_from_server);
 			printf("Received packet of seq no.: %d\n", seq_no);
+            printf("Packet Received:\n");
+            printPacket(buffer_from_server);
 
 			//copy all data from the buffer
 			int i = HEADER_LEN;
 			int j = 0;
 			int datalen = get_datalen(buffer_from_server);
-                        memset(buffer, 0, sizeof(buffer));
+            memset(buffer, 0, sizeof(buffer));
 			for (j = 0; j < datalen; j++)
 			{
 				buffer[j] = buffer_from_server[i];
                                 i++;
 			}
-                        buffer[j] = '\0';
+            buffer[j] = '\0';
 
 			fprintf(file_to_build, "%s", buffer);
 
 			if (seq_no == expected_SEQ_number)
 			{
-				//missing srcport for now...
-                          header_data.srcPort = ntohs(cli_addr.sin_port);
-			  header_data.destPort = ntohs(serv_addr.sin_port);
-                          header_data.seq = 0;
-			  header_data.ack = seq_no + datalen;
-			  header_data.dataLen = (short) 0;
-			  bzero(packet, MAX_PACKETSIZE);
-			  memcpy(packet,(struct Header *) &header_data, HEADER_LEN);
-			  n = write(sockfd, packet, sizeof(packet));
-			  if (n < 0)
-		   	    error("Something went wrong when sending the packet under normal conditions...");
-                          printf("Packet sent:\n");
-                          printPacket(packet);
-		  	  expected_SEQ_number += datalen;
-                          if (get_flag(buffer_from_server) == 1)
-                            break;
+                  recent_received_SEQ_number = seq_no;
+				  header_data.srcPort = ntohs(cli_addr.sin_port);
+			      header_data.destPort = ntohs(serv_addr.sin_port);
+				  header_data.seq = 0;
+				  header_data.ack = seq_no + datalen;
+				  header_data.dataLen = (short) 0;
+				  bzero(packet, MAX_PACKETSIZE);
+				  memcpy(packet,(struct Header *) &header_data, HEADER_LEN);
+				  n = write(sockfd, packet, sizeof(packet));
+				  if (n < 0)
+				  {
+					  error("Something went wrong when sending the packet under normal conditions...");
+				  }
+		   	    
+				  printf("ACK sent:\n");
+				  printPacket(packet);
+		  		  expected_SEQ_number += datalen;
+                               
+				  if (get_flag(buffer_from_server) == 1) //1 represents the FIN packet
+				  {
+					  break;
+				  }
+                           
+			}//end if
+            
+			else
+			{
+				printf("Received a packet that had an unexpected SEQ number...\n");
+                printf("Expecting seq no.: %d\n", expected_SEQ_number);
+                printf("Received seq no. of: %d\n", seq_no);
+
+				//send out an ACK that we expected
+				header_data.srcPort = ntohs(cli_addr.sin_port);
+				header_data.destPort = ntohs(serv_addr.sin_port);
+				header_data.seq = 0;
+				header_data.ack = recent_received_SEQ_number;
+				header_data.dataLen = (short)0;
+				bzero(packet, MAX_PACKETSIZE);
+				memcpy(packet, (struct Header*) &header_data, HEADER_LEN);
+				if (write(sockfd, packet, sizeof(packet)) < 0)
+				{
+					error("Unable to write to sockfd");
+				}
+
+				printf("Packet sent with ACK: %d\n", recent_received_SEQ_number);
+                /*
+                if (get_flag(buffer_from_server) == 1) //1 represents the FIN packet
+				{
+				     break;
+				}*/
 			}
+            
 
-
-        }
-
-
-
+        }//end else
     }//end while
+
 	fclose(file_to_build);
 	close(sockfd);
 
