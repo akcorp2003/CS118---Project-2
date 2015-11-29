@@ -430,9 +430,9 @@ int main(int argc, char *argv[])
 		else
 		{
 			if (loss == 1)
-				printf("Packet Lost:\n");
+				printf("\nPacket Lost:\n");
 			else
-				printf("Packet Corrupted:\n");
+				printf("\nPacket Corrupted:\n");
 
 			loss = 0;
 			corruption = 0;
