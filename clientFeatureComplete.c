@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 					error("Unable to write to sockfd");
 				}
 
-				printf("\nPacket sent with ACK: %d\n", expected_SEQ_number);
+				printf("Packet sent with ACK: %d\n", expected_SEQ_number);
 				printPacket(packet);
 			}
 
