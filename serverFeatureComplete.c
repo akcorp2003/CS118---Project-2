@@ -73,9 +73,9 @@ void getFileName(char * buffer, char * filename)
 
 int getFlag(char * buffer)
 {
-  struct Header packet;
-  memcpy((struct Header *) &packet, buffer, headerLen);
-  return packet.flag;
+	struct Header packet;
+	memcpy((struct Header *) &packet, buffer, headerLen);
+	return packet.flag;
 }
 
 
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 	srand((unsigned)time(&t));
 
 	if (argc < 5) {
-		fprintf(stderr, "ERROR, missing argument\n");
+		fprintf(stderr, stderr, "usage: %s <port number> <Control Window (CWnd)> <probability loss> <probability corrupt>\n", argv[0]);
 		exit(1);
 	}
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 		// read if timeout has not occured
 		if (timeout != 1)
 		{
-                        errno = 0;
+			errno = 0;
 			sizeCliAddr = sizeof(cli_addr);
 			n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
 				(struct sockaddr *) &cli_addr, &sizeCliAddr);
@@ -209,7 +209,7 @@ int main(int argc, char *argv[])
 				memset(filename, 0, 1024);
 				getFileName(buffer, filename);
 				printf("File Requested: %s\n", filename);
-                                printPacket(buffer);
+				printPacket(buffer);
 
 				fp = fopen(filename, "r");
 				if (fp == NULL)
@@ -293,8 +293,8 @@ int main(int argc, char *argv[])
 			// if client sends ACK
 			else
 			{
-                                if (getFlag(buffer) == 1)
-                                  printf("\nFIN Received:\n");
+				if (getFlag(buffer) == 1)
+					printf("\nFIN Received:\n");
 				else printf("\nACK Received:\n");
 				printPacket(buffer);
 				cumAck = getAck(buffer);
@@ -352,61 +352,61 @@ int main(int argc, char *argv[])
 				base += j;
 			}
 
-                  if (getFlag(buffer) == 1)
-                  {
-                    alarm(0);
-                    memset(packet,0,maxPacketSize + 1);
-                    memset((struct Header *) &data, 0, headerLen);
-                    data.srcPort = ntohs(serv_addr.sin_port); 
-                    data.destPort = ntohs(cli_addr.sin_port);
-                    memcpy(packet, (struct Header *) &data, headerLen);
-                    for (i = 0; i < 1; i++)
-                    {
-                      n = sendto(sockfd, packet, sizeof(packet), 0,
-                              (struct sockaddr *) &cli_addr, sizeof(cli_addr)); 
-                      if (n < 0)
-                        error("ERROR writing to socket");
+			if (getFlag(buffer) == 1)
+			{
+				alarm(0);
+				memset(packet, 0, maxPacketSize + 1);
+				memset((struct Header *) &data, 0, headerLen);
+				data.srcPort = ntohs(serv_addr.sin_port);
+				data.destPort = ntohs(cli_addr.sin_port);
+				memcpy(packet, (struct Header *) &data, headerLen);
+				for (i = 0; i < 1; i++)
+				{
+					n = sendto(sockfd, packet, sizeof(packet), 0,
+						(struct sockaddr *) &cli_addr, sizeof(cli_addr));
+					if (n < 0)
+						error("ERROR writing to socket");
 
-                      printf("\nPacket Sent:\n");
-                      printPacket(packet);
-                      sleep(2);
-                    }
+					printf("\nPacket Sent:\n");
+					printPacket(packet);
+					sleep(2);
+				}
 
-                    data.flag = 1;
-                    memcpy(packet, (struct Header *) &data, headerLen);
-                    n = sendto(sockfd, packet, sizeof(packet), 0,
-		            (struct sockaddr *) &cli_addr, sizeof(cli_addr));
-	            if (n < 0) 
-                      error("ERROR writing to socket");
+				data.flag = 1;
+				memcpy(packet, (struct Header *) &data, headerLen);
+				n = sendto(sockfd, packet, sizeof(packet), 0,
+					(struct sockaddr *) &cli_addr, sizeof(cli_addr));
+				if (n < 0)
+					error("ERROR writing to socket");
 
-                    printf("\nPacket Sent:\n");
-                    printPacket(packet);
+				printf("\nPacket Sent:\n");
+				printPacket(packet);
 
-                    alarm(dur);
+				alarm(dur);
 
-                    while (1)
-                    {
-                      n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
-                           (struct sockaddr *) &cli_addr, &sizeCliAddr);
-                      if (n < 0 && errno == 0)
-                        error ("ERROR reading from socket");
-                      if (errno == EINTR)
-                      {
-                        errno = 0;
-                        break;
-                      }
-                      loss = isHit(probLoss);
-                      corruption = isHit(probCorruption);
-                      if (loss == 1)
-		        printf("Packet Lost:\n");
-		      else if (corruption == 1)
-			printf("Packet Corrupted:\n");
+				while (1)
+				{
+					n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
+						(struct sockaddr *) &cli_addr, &sizeCliAddr);
+					if (n < 0 && errno == 0)
+						error("ERROR reading from socket");
+					if (errno == EINTR)
+					{
+						errno = 0;
+						break;
+					}
+					loss = isHit(probLoss);
+					corruption = isHit(probCorruption);
+					if (loss == 1)
+						printf("Packet Lost:\n");
+					else if (corruption == 1)
+						printf("Packet Corrupted:\n");
 
-                      if (loss == 0 && corruption == 0)
-                        printf("\nACK Received\n");
-		      printPacket(buffer);
-                    }
-                  }
+					if (loss == 0 && corruption == 0)
+						printf("\nACK Received\n");
+					printPacket(buffer);
+				}
+			}
 		}
 		// if loss or corruption do nothing
 		else
@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
 			if (loss == 1)
 				printf("Packet Lost:\n");
 			else
-			  printf("Packet Corrupted:\n");
+				printf("Packet Corrupted:\n");
 
 			loss = 0;
 			corruption = 0;
