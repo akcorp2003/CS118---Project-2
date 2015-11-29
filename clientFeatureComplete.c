@@ -132,10 +132,6 @@ int main(int argc, char *argv[])
 	prob_loss = atof(argv[4]) * 100.0;
 	prob_corrupt = atof(argv[5]) * 100.0;
 
-	//for now...
-	//prob_loss = 0.0;
-	//prob_corrupt = 0.0;
-
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0); //create a new socket
 	if (sockfd < 0)
 		error("ERROR opening socket");
@@ -193,8 +189,8 @@ int main(int argc, char *argv[])
 	}
 
 	printf("Requested the file: %s", filename);
-        printf("\nPacket Sent: \n");
-        printPacket(packet);
+	printf("\nPacket Sent: \n");
+	printPacket(packet);
 
 	filename2 = (char *)malloc((strlen(filename) + 2) * sizeof(char));
 	memcpy(filename2 + 1, filename, strlen(filename));
@@ -220,7 +216,7 @@ int main(int argc, char *argv[])
 		{
 			//do nothing special
 			printf("\nA data packet was lost!! The sequence number was: %d\n", get_SequenceNumber(buffer_from_server));
-                        printPacket(buffer_from_server);
+			printPacket(buffer_from_server);
 		}
 
 		//packet corruption
@@ -329,75 +325,75 @@ int main(int argc, char *argv[])
 	header_data.flag = 1; //representing the FIN packet
 	bzero(packet, MAX_PACKETSIZE);
 	memcpy(packet, (struct Header*)&header_data, HEADER_LEN);
- 
+
 	if (write(sockfd, packet, sizeof(packet)) < 0)
 	{
 		error("Unable to write to sockfd");
 	}
-        printf("\nFIN Sent: \n");
-        printPacket(packet);
+	printf("\nFIN Sent: \n");
+	printPacket(packet);
 
-        struct sigaction sa;
-        sa.sa_handler = setTimeout;
-        sa.sa_flags = SA_SIGINFO;
-        sigaction(SIGALRM, &sa, NULL);
-        int flag;
-        int z = 0;
-        
-        alarm(dur);
+	struct sigaction sa;
+	sa.sa_handler = setTimeout;
+	sa.sa_flags = SA_SIGINFO;
+	sigaction(SIGALRM, &sa, NULL);
+	int flag;
+	int z = 0;
+
+	alarm(dur);
 	while (z < 5)
 	{
 		z++;
 		//read from server until we get our second FIN packet
 		n = read(sockfd, buffer_from_server, sizeof(buffer_from_server));
 
-                if (errno == EINTR && timeout == 1)
-                {
-                  timeout = 0;
-                  errno = 0;
-                  alarm(dur);
-                  n = write(sockfd, packet, sizeof(packet));
-                  if (n < 0) error("ERROR writing to socket");
-                  printf("\nFIN sent:\n");
-                  printPacket(packet);
-                  continue;
-                }
+		if (errno == EINTR && timeout == 1)
+		{
+			timeout = 0;
+			errno = 0;
+			alarm(dur);
+			n = write(sockfd, packet, sizeof(packet));
+			if (n < 0) error("ERROR writing to socket");
+			printf("\nFIN sent:\n");
+			printPacket(packet);
+			continue;
+		}
 		else if (n < 0) error("ERROR reading from socket");
 
-                if (rand() % 100 < prob_loss)
-                {
-                  printf("\nPacket Lost\n");
-                  continue;
-                }
-                else if (rand() % 100 < prob_corrupt) 
-                {
-                  printf("\nPacket Corrupted\n");
-                  continue;
-                }
-                else
-                {
-		  flag = get_flag(buffer_from_server);
-		  if (flag == 1)
-		  {
-                        printf("\nFIN Received\n");
-                        printPacket(buffer_from_server);
-                        alarm(0);
-			break;
-		  }
-                  else printf("\nACK Received\n");
-                }
-                printPacket(buffer_from_server);
+		if (rand() % 100 < prob_loss)
+		{
+			printf("\nPacket Lost\n");
+			continue;
+		}
+		else if (rand() % 100 < prob_corrupt)
+		{
+			printf("\nPacket Corrupted\n");
+			continue;
+		}
+		else
+		{
+			flag = get_flag(buffer_from_server);
+			if (flag == 1)
+			{
+				printf("\nFIN Received\n");
+				printPacket(buffer_from_server);
+				alarm(0);
+				break;
+			}
+			else printf("\nACK Received\n");
+		}
+		printPacket(buffer_from_server);
 	}
 	clock_t begin_TIME_WAIT = clock();
 	int TIME_WAIT = 20; //30 seconds
 	int msec = 0;
 
-        memset(packet,0,sizeof(packet));
-        n = write(sockfd,packet,sizeof(packet));
-        if (n < 0)
-                  error("ERROR writing to socket");
-        printf("\nACK sent:\n");
-        printPacket(packet);
+	memset(packet, 0, sizeof(packet));
+	n = write(sockfd, packet, sizeof(packet));
+	if (n < 0)
+		error("ERROR writing to socket");
+	printf("\nACK sent:\n");
+	printPacket(packet);
 	while (1)
 	{
 		clock_t elapsed = clock() - begin_TIME_WAIT;
