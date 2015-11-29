@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <errno.h>
 
-static int maxPacketSize = 30;
+static int maxPacketSize = 1000;
 static int headerLen = 20;
 static int packetBufferSize = 100;
 int timeout = 0;
@@ -38,7 +38,6 @@ int isHit(int prob)
 		return 0;
 
 	int num = rand() % 100;
-	printf("%d\n", num);
 	if (num < prob)
 		return 1;
 	return 0;
@@ -47,7 +46,6 @@ int isHit(int prob)
 void setTimeout(int signum)
 {
 	timeout = 1;
-	printf("SIGNAL RECEIVED\n");
 }
 
 int getAck(char * buffer)
@@ -201,6 +199,11 @@ int main(int argc, char *argv[])
 		// if no loss or corruption
 		loss = isHit(probLoss);
 		corruption = isHit(probCorruption);
+		if (getDataLen(buffer) > 0)
+                {
+                  loss = 0;
+                  corruption = 0;
+                }
 		if (loss != 1 && corruption != 1)
 		{
 			// if client asks for file
@@ -359,52 +362,67 @@ int main(int argc, char *argv[])
 				memset((struct Header *) &data, 0, headerLen);
 				data.srcPort = ntohs(serv_addr.sin_port);
 				data.destPort = ntohs(cli_addr.sin_port);
-				memcpy(packet, (struct Header *) &data, headerLen);
-				for (i = 0; i < 1; i++)
+			
+				while(1)
 				{
+					data.flag = 0;
+					memcpy(packet, (struct Header *) &data, headerLen);
 					n = sendto(sockfd, packet, sizeof(packet), 0,
 						(struct sockaddr *) &cli_addr, sizeof(cli_addr));
 					if (n < 0)
 						error("ERROR writing to socket");
 
-					printf("\nPacket Sent:\n");
+					printf("\nACK Sent:\n");
 					printPacket(packet);
-					sleep(2);
-				}
 
-				data.flag = 1;
-				memcpy(packet, (struct Header *) &data, headerLen);
-				n = sendto(sockfd, packet, sizeof(packet), 0,
+					data.flag = 1;
+					memcpy(packet, (struct Header *) &data, headerLen);
+					n = sendto(sockfd, packet, sizeof(packet), 0,
 					(struct sockaddr *) &cli_addr, sizeof(cli_addr));
-				if (n < 0)
-					error("ERROR writing to socket");
+					if (n < 0)
+						error("ERROR writing to socket");
 
-				printf("\nPacket Sent:\n");
-				printPacket(packet);
+					printf("\nFIN Sent:\n");
+					printPacket(packet);
 
-				alarm(dur);
-
-				while (1)
-				{
-					n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
-						(struct sockaddr *) &cli_addr, &sizeCliAddr);
-					if (n < 0 && errno == 0)
-						error("ERROR reading from socket");
-					if (errno == EINTR)
+					while(1)
 					{
-						errno = 0;
-						break;
-					}
-					loss = isHit(probLoss);
-					corruption = isHit(probCorruption);
-					if (loss == 1)
-						printf("Packet Lost:\n");
-					else if (corruption == 1)
-						printf("Packet Corrupted:\n");
+						alarm(dur);
+						n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
+							(struct sockaddr *) &cli_addr, &sizeCliAddr);
+						if (n < 0 && errno != EINTR)
+							error("ERROR reading from socket");
+						if (errno == EINTR)
+						{
+							errno = 0;
+							break;
+						{
+						alarm(0);
+			
+						loss = isHit(probLoss);
+						corruption = isHit(probCorruption);
+						if (loss == 1)
+		        				printf("\nPacket Lost:\n");
+		      				else if (corruption == 1)
+							printf("\nPacket Corrupted:\n");
 
-					if (loss == 0 && corruption == 0)
-						printf("\nACK Received\n");
-					printPacket(buffer);
+                      				if (loss == 0 && corruption == 0 && getFlag(buffer) == 1)
+                      				{
+                        				printf("\nFIN Received\n");
+                        				printPacket(buffer);
+                        				break;
+                      				}
+                      				else if (loss == 0 && corruption == 0)
+                      				{
+                					printf("\nACK Received\n");
+		        				printPacket(buffer);
+                        				close(sockfd);
+                        				return 0;
+                        				//break;
+                      				}
+                      				printPacket(buffer);
+                      				continue;
+					}
 				}
 			}
 		}
