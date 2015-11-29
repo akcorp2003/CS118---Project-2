@@ -14,7 +14,7 @@ static int MAX_PACKETSIZE = 30;
 static int HEADER_LEN = 20;
 static int HEADER_FIELDS = 7;
 int timeout = 0;
-int dur = 10; //seconds, used for teardown
+int dur = 5; //seconds, used for teardown
 
 /*
  * header format:
@@ -342,10 +342,12 @@ int main(int argc, char *argv[])
         sa.sa_flags = SA_SIGINFO;
         sigaction(SIGALRM, &sa, NULL);
         int flag;
+        int z = 0;
         
         alarm(dur);
-	while (1)
+	while (z < 5)
 	{
+		z++;
 		//read from server until we get our second FIN packet
 		n = read(sockfd, buffer_from_server, sizeof(buffer_from_server));
 
