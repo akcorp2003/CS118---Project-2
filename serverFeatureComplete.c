@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	srand((unsigned)time(&t));
 
 	if (argc < 5) {
-		fprintf(stderr, stderr, "usage: %s <port number> <Control Window (CWnd)> <probability loss> <probability corrupt>\n", argv[0]);
+		fprintf(stderr, "usage: %s <port number> <Control Window (CWnd)> <probability loss> <probability corrupt>\n", argv[0]);
 		exit(1);
 	}
 
