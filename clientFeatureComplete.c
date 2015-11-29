@@ -360,12 +360,10 @@ int main(int argc, char *argv[])
 		if (rand() % 100 < prob_loss)
 		{
 			printf("\nPacket Lost\n");
-			continue;
 		}
 		else if (rand() % 100 < prob_corrupt)
 		{
 			printf("\nPacket Corrupted\n");
-			continue;
 		}
 		else
 		{
