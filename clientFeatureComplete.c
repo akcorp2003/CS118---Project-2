@@ -10,7 +10,7 @@
 #include <signal.h>
 #include <errno.h>
 
-static int MAX_PACKETSIZE = 30;
+static int MAX_PACKETSIZE = 1000;
 static int HEADER_LEN = 20;
 static int HEADER_FIELDS = 7;
 int timeout = 0;
@@ -48,7 +48,6 @@ void error(char *msg)
 void setTimeout(int signum)
 {
 	timeout = 1;
-	printf("SIGNAL RECEIVED\n");
 }
 
 void printPacket(char * packet)
@@ -228,7 +227,7 @@ int main(int argc, char *argv[])
 			header_data.srcPort = ntohs(cli_addr.sin_port);
 			header_data.destPort = ntohs(serv_addr.sin_port);
 			header_data.seq = 0;
-			header_data.ack = recent_received_SEQ_number;
+			header_data.ack = expected_SEQ_number;
 			header_data.dataLen = (short)0;
 			bzero(packet, MAX_PACKETSIZE);
 			memcpy(packet, (struct Header*) &header_data, HEADER_LEN);
@@ -237,7 +236,7 @@ int main(int argc, char *argv[])
 				error("Unable to write to sockfd");
 			}
 
-			printf("Packet sent with ACK: %d\n", recent_received_SEQ_number);
+			printf("Packet sent with ACK: %d\n", expected_SEQ_number);
 			printPacket(packet);
 
 		}
@@ -338,12 +337,10 @@ int main(int argc, char *argv[])
 	sa.sa_flags = SA_SIGINFO;
 	sigaction(SIGALRM, &sa, NULL);
 	int flag;
-	int z = 0;
 
 	alarm(dur);
-	while (z < 5)
+	while (1)
 	{
-		z++;
 		//read from server until we get our second FIN packet
 		n = read(sockfd, buffer_from_server, sizeof(buffer_from_server));
 
@@ -373,7 +370,7 @@ int main(int argc, char *argv[])
 		else
 		{
 			flag = get_flag(buffer_from_server);
-			if (flag == 1)
+			if (flag == 1 && get_datalen(buffer_from_server) == 0)
 			{
 				printf("\nFIN Received\n");
 				printPacket(buffer_from_server);
@@ -384,24 +381,22 @@ int main(int argc, char *argv[])
 		}
 		printPacket(buffer_from_server);
 	}
-	clock_t begin_TIME_WAIT = clock();
-	int TIME_WAIT = 20; //30 seconds
-	int msec = 0;
 
-	memset(packet, 0, sizeof(packet));
-	n = write(sockfd, packet, sizeof(packet));
-	if (n < 0)
-		error("ERROR writing to socket");
-	printf("\nACK sent:\n");
-	printPacket(packet);
+	alarm(30);
+        memset(packet,0,sizeof(packet));
+        timeout = 0;
 	while (1)
 	{
-		clock_t elapsed = clock() - begin_TIME_WAIT;
-		//msec = elapsed * 1000 / CLOCKS_PER_SEC;
-		if (elapsed / CLOCKS_PER_SEC >= TIME_WAIT)
+		if (timeout == 1)
 		{
 			break;
 		}
+                n = write(sockfd,packet,sizeof(packet));
+                if (n < 0)
+                  error ("ERROR writing to socket");
+                printf("\nACK sent:\n");
+                printPacket(packet);
+                sleep(5);
 	}
 
 	//when 30 seconds is reached, we officially close everything
