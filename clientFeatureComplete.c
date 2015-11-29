@@ -389,7 +389,7 @@ int main(int argc, char *argv[])
                 printPacket(buffer_from_server);
 	}
 	clock_t begin_TIME_WAIT = clock();
-	int TIME_WAIT = 30000; //30 seconds
+	int TIME_WAIT = 20; //30 seconds
 	int msec = 0;
 
         memset(packet,0,sizeof(packet));
@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
 	{
 		clock_t elapsed = clock() - begin_TIME_WAIT;
 		//msec = elapsed * 1000 / CLOCKS_PER_SEC;
-		if (elapsed / CLOCKS_PER_SEC >= 30000)
+		if (elapsed / CLOCKS_PER_SEC >= TIME_WAIT)
 		{
 			break;
 		}
