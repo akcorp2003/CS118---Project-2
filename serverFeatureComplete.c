@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
 						{
 							errno = 0;
 							break;
-						{
+						}
 						alarm(0);
 			
 						loss = isHit(probLoss);
