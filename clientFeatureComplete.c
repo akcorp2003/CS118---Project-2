@@ -152,13 +152,16 @@ int main(int argc, char *argv[])
 
 	cli_addr.sin_family = AF_INET;
 	cli_addr.sin_addr.s_addr = INADDR_ANY;
-	cli_addr.sin_port = htons(portno * 2);
+	cli_addr.sin_port = 0;
 
 	if (bind(sockfd, (struct sockaddr *) &cli_addr, sizeof(cli_addr)) < 0)
 	{
 		error("ERROR on binding");
 	}
-
+	
+	socklen_t len = sizeof(cli_addr);
+	if (getsockname(sockfd, (struct sockaddr *) &cli_addr, &len) < 0)
+    		error("ERROR getting port");
 
 	if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
 	{
