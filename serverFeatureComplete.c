@@ -17,8 +17,8 @@ int fileRequest = 1;
 int dur = 8;
 
 struct Header {
-	short srcPort;
-	short destPort;
+	unsigned short srcPort;
+	unsigned short destPort;
 	int seq;
 	int ack;
 	short dataLen;
